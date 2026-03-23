@@ -33,14 +33,18 @@ export function Sidebar() {
   return (
     <aside className="flex flex-col w-[240px] min-h-screen bg-[#1E293B] border-r border-[#334155] shrink-0">
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-5 py-5 border-b border-[#334155]">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600">
-          <BarChart2 className="text-white" size={18} />
-        </div>
-        <span className="text-[#F8FAFC] font-bold text-lg tracking-tight">
-          ReviewSense
-        </span>
-      </div>
+      {/* Logo — clique pour retourner à la landing page */}
+<Link
+  href="/"
+  className="flex items-center gap-2.5 px-5 py-5 border-b border-[#334155] hover:opacity-80 transition-opacity"
+>
+  <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-blue-600">
+    <BarChart2 className="text-white" size={18} />
+  </div>
+  <span className="text-[#F8FAFC] font-bold text-lg tracking-tight">
+    ReviewSense
+  </span>
+</Link>
 
       {/* Navigation */}
       <nav className="flex-1 px-3 py-4 space-y-1">
