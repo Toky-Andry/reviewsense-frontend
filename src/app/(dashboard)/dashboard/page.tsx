@@ -3,76 +3,82 @@
 import { useRouter } from "next/navigation";
 import {
   MessageSquare, ThumbsUp, ThumbsDown,
-  AlertTriangle, Plus, Calendar, ChevronDown,
+  AlertTriangle, Plus, TrendingUp,
 } from "lucide-react";
+import {
+  AreaChart, Area, XAxis, YAxis,
+  Tooltip, ResponsiveContainer,
+} from "recharts";
 import { motion } from "framer-motion";
-import { MetricCard } from "@/components/dashboard/MetricCard";
-import { SentimentDonut } from "@/components/dashboard/SentimentDonut";
+import { MetricCard }      from "@/components/dashboard/MetricCard";
+import { SentimentDonut }  from "@/components/dashboard/SentimentDonut";
 import { SentimentTrends } from "@/components/dashboard/SentimentTrends";
-import { RecentAnalyses } from "@/components/dashboard/RecentAnalyses";
+import { RecentAnalyses }  from "@/components/dashboard/RecentAnalyses";
+import { useGetDashboardMetrics } from "@/hooks/useDashboard";
+import { MOCK_DATA }       from "@/lib/constants";
+import { formatDate }      from "@/lib/utils";
+import { SOURCES }         from "@/lib/constants";
+import { ScoreRing }       from "@/components/ui/score-ring";
+import { BadgeCustom }     from "@/components/ui/badge-custom";
+import type { AnalysisStatus } from "@/types/analysis";
 
-const mockMetrics = {
-  totalReviews: 12450,
-  totalReviewsTrend: 5.2,
-  positiveScore: 82,
-  positiveScoreTrend: 2.1,
-  negativeScore: 12,
-  negativeScoreTrend: -0.5,
-  pendingAlerts: 3,
-};
-
-const mockSentiment = { positive: 68, neutral: 20, negative: 12 };
-
-const mockTrends = [
-  { date: "01 May", positive: 62 },
-  { date: "05 May", positive: 65 },
-  { date: "10 May", positive: 70 },
-  { date: "15 May", positive: 68 },
-  { date: "20 May", positive: 75 },
-  { date: "25 May", positive: 80 },
-  { date: "30 May", positive: 68 },
-];
-
-const mockRecentAnalyses = [
-  { id: "1", store: "Apple Store NYC",    rating: 4.8, status: "COMPLETED"  as const },
-  { id: "2", store: "Whole Foods Market", rating: 3.9, status: "COMPLETED"  as const },
-  { id: "3", store: "TechGadgets.io",     rating: 3.2, status: "PROCESSING" as const },
-];
+function getStatusVariant(status: AnalysisStatus) {
+  return { COMPLETED: "completed", PROCESSING: "processing", FAILED: "failed" }[status] as
+    "completed" | "processing" | "failed";
+}
 
 const fadeUp = (delay = 0) => ({
-  initial: { opacity: 0, y: 16 },
-  animate: { opacity: 1, y: 0 },
+  initial:    { opacity: 0, y: 16 },
+  animate:    { opacity: 1, y: 0 },
   transition: { duration: 0.4, delay },
 });
 
 export default function DashboardPage() {
   const router = useRouter();
 
+  // Try real API first, fall back to mock data
+  const { data: apiMetrics, isLoading, isError } = useGetDashboardMetrics();
+  const metrics = apiMetrics ?? MOCK_DATA.dashboardMetrics;
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6 animate-pulse">
+        <div className="h-8 bg-[#1E293B] rounded-lg w-48" />
+        <div className="grid grid-cols-4 gap-4">
+          {[1,2,3,4].map((i) => (
+            <div key={i} className="h-32 bg-[#1E293B] rounded-xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-3 gap-4">
+          <div className="col-span-2 h-64 bg-[#1E293B] rounded-xl" />
+          <div className="h-64 bg-[#1E293B] rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-
-      {/* Page header */}
-      <motion.div {...fadeUp(0)} className="flex items-start justify-between">
+      {/* Header */}
+      <motion.div {...fadeUp(0)} className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-[#F8FAFC]">Review Overview</h2>
-          <p className="text-sm text-[#94A3B8] mt-1">
-            Real-time analysis of your digital reputation across all platforms.
+          <h2 className="text-2xl font-bold text-[#F8FAFC]">Dashboard</h2>
+          <p className="text-sm text-[#94A3B8] mt-0.5">
+            Overview of your review analytics
+            {isError && (
+              <span className="ml-2 text-orange-400 text-xs">
+                (showing demo data)
+              </span>
+            )}
           </p>
         </div>
-        <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[#1E293B] border border-[#334155] text-sm text-[#94A3B8] hover:text-[#F8FAFC] hover:border-[#475569] transition-colors">
-            <Calendar size={14} />
-            Last 30 Days
-            <ChevronDown size={14} />
-          </button>
-          <button
-            onClick={() => router.push("/onboarding")}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold transition-colors"
-          >
-            <Plus size={15} />
-            New Analysis
-          </button>
-        </div>
+        <button
+          onClick={() => router.push("/onboarding")}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium transition-colors"
+        >
+          <Plus size={15} />
+          New Analysis
+        </button>
       </motion.div>
 
       {/* Metric cards */}
@@ -82,58 +88,87 @@ export default function DashboardPage() {
       >
         <MetricCard
           title="Total Reviews"
-          value="12,450"
-          trend={mockMetrics.totalReviewsTrend}
+          value={metrics.totalReviews.toLocaleString()}
+          trend={metrics.totalReviewsTrend}
           icon={MessageSquare}
           iconColor="bg-blue-500/20 text-blue-400"
         />
         <MetricCard
           title="Positive Score"
-          value={`${mockMetrics.positiveScore}%`}
-          trend={mockMetrics.positiveScoreTrend}
+          value={`${metrics.positiveScore}%`}
+          trend={metrics.positiveScoreTrend}
           icon={ThumbsUp}
           iconColor="bg-green-500/20 text-green-400"
         />
         <MetricCard
           title="Negative Score"
-          value={`${mockMetrics.negativeScore}%`}
-          trend={mockMetrics.negativeScoreTrend}
+          value={`${metrics.negativeScore}%`}
+          trend={metrics.negativeScoreTrend}
           icon={ThumbsDown}
           iconColor="bg-red-500/20 text-red-400"
         />
         <MetricCard
-          title="Pending Alerts"
-          value={mockMetrics.pendingAlerts}
+          title="Active Alerts"
+          value={metrics.pendingAlerts}
           icon={AlertTriangle}
           iconColor="bg-orange-500/20 text-orange-400"
-          isPendingAlerts
+          isPendingAlerts={metrics.pendingAlerts > 0}
           onClick={() => router.push("/notifications")}
-          extra={
-            <button
-              onClick={(e) => { e.stopPropagation(); router.push("/notifications"); }}
-              className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
-            >
-              View Notifications →
-            </button>
-          }
         />
       </motion.div>
 
-      {/* Charts row */}
+      {/* Charts */}
       <motion.div {...fadeUp(0.2)} className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-1">
-          <SentimentDonut {...mockSentiment} />
+          <SentimentDonut {...metrics.sentimentDistribution} />
         </div>
         <div className="lg:col-span-2">
-          <SentimentTrends data={mockTrends} />
+          <SentimentTrends data={metrics.sentimentTrends} />
         </div>
       </motion.div>
 
       {/* Recent analyses */}
       <motion.div {...fadeUp(0.3)}>
-        <RecentAnalyses analyses={mockRecentAnalyses} />
+        <div className="bg-[#1E293B] border border-[#334155] rounded-xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-[#F8FAFC]">Recent Analyses</h3>
+            <button
+              onClick={() => router.push("/analyses")}
+              className="text-xs text-blue-400 hover:text-blue-300 transition-colors"
+            >
+              View all →
+            </button>
+          </div>
+          <div className="space-y-3">
+            {metrics.recentAnalyses.map((analysis) => (
+              <div
+                key={analysis.id}
+                onClick={() =>
+                  analysis.status === "COMPLETED" &&
+                  router.push(`/analyses/${analysis.id}`)
+                }
+                className="flex items-center gap-4 p-3 rounded-lg bg-[#0F172A]/60 hover:bg-[#0F172A] transition-colors cursor-pointer"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-[#F8FAFC] truncate">
+                    {analysis.storeName}
+                  </p>
+                  <p className="text-xs text-[#94A3B8] mt-0.5">
+                    {SOURCES[analysis.source]?.label} · {formatDate(analysis.createdAt)}
+                  </p>
+                </div>
+                {analysis.score !== undefined ? (
+                  <ScoreRing score={analysis.score} size={40} strokeWidth={5} />
+                ) : (
+                  <BadgeCustom variant={getStatusVariant(analysis.status)}>
+                    {analysis.status}
+                  </BadgeCustom>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
       </motion.div>
-
     </div>
   );
 }
